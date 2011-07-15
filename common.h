@@ -77,7 +77,7 @@
 
   #define file_tag_type s32
 #else
-  #include <SDL.h>
+  #include <SDL/SDL.h>
 #ifdef ZAURUS
   #define function_cc
 #else
@@ -173,7 +173,7 @@ typedef u32 fixed16_16;
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <SDL.h>
+#include <SDL/SDL.h>
 #include "cpu.h"
 #include "memory.h"
 #include "video.h"
