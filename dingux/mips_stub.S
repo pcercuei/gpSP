@@ -163,21 +163,13 @@
 
 
 .macro m_seb dest,src
-	sw	t0,-4($sp)
-	andi	\dest,\src,0xff
-	xori	\dest,0x80
-	ori	t0,zero,0x80
-	sub	\dest,t0
-	lw	t0,-4($sp)
+	sll \dest,\src,24
+	sra \dest,\src,24
 .endm
 
 .macro m_seh dest,src
-	sw	  t0,-4($sp)
-	andi  \dest,\src,0xffff
-	xori  \dest,0x8000
-	ori	  t0,zero,0x8000
-	sub	  \dest,t0
-	lw	  t0,-4($sp)
+	sll \dest,\src,16
+	sra \dest,\src,16
 .endm
 
 .macro m_ror dest,src,shift
