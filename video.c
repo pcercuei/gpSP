@@ -3360,6 +3360,125 @@ void flip_screen()
     current_scanline_ptr += pitch;                                            \
   }                                                                           \
 
+
+// GPL software scaler, courtesy of Ayla (paul@crapouillou.net)
+// Upscale from 240x160 to 320x240
+static void gba_upscale(uint32_t *to, uint32_t *from, uint32_t pitch)
+{
+    /* Before:
+     *    a b c d e f
+     *    g h i j k l
+     *
+     * After (parenthesis = average):
+     *    a      (a,b)      (b,c)      c      d      (d,e)      (e,f)      f
+     *    (a,g)  (a,b,g,h)  (b,c,h,i)  (c,i)  (d,j)  (d,e,j,k)  (e,f,k,l)  (f,l)
+     *    g      (g,h)      (h,i)      i      j      (j,k)      (k,l)      l
+     */
+
+    uint32_t reg1, reg2, reg3, reg4, reg5; //, reg6;
+    unsigned int x, y;
+
+
+    for (y=0; y<240/3; y++) {
+        for (x=0; x<320/8; x++) {
+            __builtin_prefetch(to+4, 1);
+
+            // Read b-a
+            reg1 = *from;
+            reg2 = (reg1 & 0xf7de0000) >> 1;
+            reg1 &= 0xffff;
+            reg1 |= reg2 + ((reg1 & 0xf7de) << 15);
+
+            // Write (a,b)-a
+            *to = reg1;
+//			reg6 = (reg1 >> 16) & 1;
+            reg1 = (reg1 & 0xf7def7de) >> 1;
+
+            // Read h-g
+            reg3 = *(from++ + 240/2 + pitch/2);
+            reg4 = (reg3 & 0xf7de0000) >> 1;
+            reg3 &= 0xffff;
+            reg3 |= reg4 + ((reg3 & 0xf7de) << 15);
+
+            // Write (g,h)-g
+            *(to + 2*320/2) = reg3;
+//			reg6 &= reg3 >> 16;
+            reg3 = (reg3 & 0xf7def7de) >> 1;
+
+
+            // Write (a,b,g,h)-(a,g)
+            *(to++ + 320/2) = reg1 + reg3 + 0x10000; // + reg6;
+
+            // Read d-c
+            reg1 = *from;
+            reg2 = ((reg2 + ((reg1 & 0xf7de) << 15)) >> 16) | ((reg1 & 0xffff) << 16);
+
+            // Write c-(b,c)
+            *to = reg2;
+//			reg6 = reg2 & 1;
+            reg2 = (reg2 & 0xf7def7de) >> 1;
+
+            // Read j-i
+            reg3 = *(from++ + 240/2 + pitch/2);
+            reg4 = ((reg4 + ((reg3 & 0xf7de) << 15)) >> 16) | ((reg3 & 0xffff) << 16);
+
+            // Write i-(h,i)
+            *(to + 2*320/2) = reg4;
+//			reg6 &= reg4;
+            reg4 = (reg4 & 0xf7def7de) >> 1;
+
+            // Write (c,i)-(b,c,h,i)
+            *(to++ + 320/2) = reg2 + reg4 + 1; // + reg6;
+
+            // Read f-e
+            reg2 = *from;
+            reg4 = (reg2 & 0xf7def7de) >> 1;
+
+            // Write (d,e)-d
+            reg1 >>= 16;
+            reg4 = reg1 | ((reg4 + ((reg1 & 0xf7de) >> 1)) << 16);
+            *to = reg4;
+//			reg6 = (reg4 >> 16) & 1;
+            reg4 = (reg4 & 0xf7def7de) >> 1;
+
+            // Read l-k
+            reg1 = *(from++ + 240/2 + pitch/2);
+            reg5 = (reg1 & 0xf7def7de) >> 1;
+
+            // Write (j,k)-j
+            reg3 >>= 16;
+            reg5 = reg3 | ((reg5 + ((reg3 & 0xf7de) >> 1)) << 16);
+            *(to + 2*320/2) = reg5;
+//			reg6 &= reg5 >> 16;
+            reg5 = (reg5 & 0xf7def7de) >> 1;
+
+            // Write (d,e,j,k)-(d,j)
+            *(to++ + 320/2) = reg4 + reg5 + 0x10000; // + reg6;
+
+            // Write f-(e,f)
+            reg3 = (reg2 & 0xf7def7de) >> 1;
+            reg2 = (reg2 & 0xffff0000) | ((reg3 + (reg3 >> 16)) & 0xffff);
+            *to = reg2;
+//			reg6 = reg2 & 1;
+            reg2 = (reg2 & 0xf7def7de) >> 1;
+
+            // Write l-(k,l)
+            reg3 = (reg1 & 0xf7def7de) >> 1;
+            reg1 = (reg1 & 0xffff0000) | ((reg3 + (reg3 >> 16)) & 0xffff);
+            *(to + 2*320/2) = reg1;
+//			reg6 &= reg1;
+            reg1 = (reg1 & 0xf7def7de) >> 1;
+
+            // Write (f,l)-(e,f,k,l)
+            *(to++ + 320/2) = reg1 + reg2 + 1; // + reg6;
+        }
+
+        to += 2*320/2;
+        from += 240/2 + 2*pitch/2;
+    }
+
+}
+
 void update_normal(void)
 {
 	SDL_BlitSurface(screen,NULL,display,NULL);
@@ -3367,33 +3486,13 @@ void update_normal(void)
 }
 
 void update_display(void)
-{	
+{
 	if (!screen_scale)
 		SDL_BlitSurface(screen,NULL,display,NULL);
 	else
 	{
-		int dx,dy,sx,sy;
-
-		int line = 0;
-		u32 pitch = get_screen_pitch();
-		u16 *src = ((u16 *)get_screen_pixels()) + 40 + (40 * pitch);
-		u16 *dest = ((u16 *)display->pixels) + ((240-214)/2) * pitch;
-
-		for(dy=sy=0; dy < 214; dy++)
-		{
-			for(dx=sx=0; dx < 320; dx++)
-			{
-				dest[dx] = src[sx>>2];
-				sx += 3;
-			}
-			dest += pitch;
-			sy+=3;
-			while(line < (sy>>2))
-			{
-				src += pitch;
-				line++;
-			}
-		}
+		uint32_t *src = (uint32_t *)screen->pixels + 20 + 80 * (320 - 240);
+		gba_upscale((uint32_t*)display->pixels, src, 320 - 240);
 	}
 
 	SDL_Flip(display);
@@ -3561,7 +3660,7 @@ void init_video()
 //	  exit(1);
   }
   //screen = SDL_SetVideoMode(320, 240, 16, SDL_FULLSCREEN);
-  display = SDL_SetVideoMode(320, 240, 16, 0);
+  display = SDL_SetVideoMode(320, 240, 16, SDL_HWSURFACE | SDL_DOUBLEBUF);
   screen = SDL_CreateRGBSurface(SDL_SWSURFACE,320,240,16,
 								display->format->Rmask,
 								display->format->Gmask,
@@ -3576,8 +3675,8 @@ void init_video()
 
 #endif
 
-video_scale_type screen_scale = scaled_aspect;
-video_scale_type current_scale = scaled_aspect;
+video_scale_type screen_scale = fullscreen;
+video_scale_type current_scale = fullscreen;
 video_filter_type screen_filter = filter_bilinear;
 
 

@@ -35,7 +35,7 @@ SDL_mutex *sound_mutex;
 SDL_cond *sound_cv;
 
 #ifndef PSP_BUILD
-u32 audio_buffer_size_number = 7;
+u32 audio_buffer_size_number = 0;
 #else
 u32 audio_buffer_size_number = 1;
 #endif

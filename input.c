@@ -480,7 +480,9 @@ gui_action_type get_gui_input()
       {
         switch(event.key.keysym.sym)
         {
+		  case SDLK_SPACE:
           case SDLK_ESCAPE:
+		  case SDLK_LALT:
             gui_action = CURSOR_EXIT;
             break;
 
@@ -501,6 +503,7 @@ gui_action_type get_gui_input()
             break;
 
           case SDLK_RETURN:
+		  case SDLK_LCTRL:
             gui_action = CURSOR_SELECT;
             break;
 

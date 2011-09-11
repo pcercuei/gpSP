@@ -20,11 +20,11 @@ COMMON_OPT += -O3 -fno-builtin -fomit-frame-pointer
 VPATH      += ..
 CFLAGS     += -DZAURUS
 # NOTE: -funroll-loops will slow down compiling considerably
-CFLAGS     += -mips32 -G0
+CFLAGS     += -march=mips32 -G0 -mtune=r4600
 CFLAGS     += $(COMMON_OPT)
 
 ASFLAGS    += $(COMMON_OPT)
-ASFLAGS    += -mips32
+ASFLAGS    += -march=mips32
 
 INCLUDES   = -I${PREFIX}/include -I${PREFIX}/include/SDL
 LIBS       = -L${PREFIX}/lib -lSDL -lpthread -lz 

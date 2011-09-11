@@ -2013,13 +2013,11 @@ s32 load_game_config(u8 *gamepak_title, u8 *gamepak_code, u8 *gamepak_maker)
   translation_gate_targets = 0;
   flash_device_id = FLASH_DEVICE_MACRONIX_64KB;
 
-#if (defined(PSP_BUILD) || defined(ARM_ARCH)) && !defined(_WIN32_WCE)
-  sprintf(config_path, "%s/%s", main_path, CONFIG_FILENAME);
-#else
-  sprintf(config_path, "%s\\%s", main_path, CONFIG_FILENAME);
-#endif
-
+  strcpy(config_path, CONFIG_FILENAME);
   config_file = fopen(config_path, "rb");
+
+  if (!config_file)
+	fprintf(stderr, "Unable to open %s.\n", config_path);
 
   if(config_file)
   {

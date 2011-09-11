@@ -17,7 +17,9 @@
  */
 
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <ctype.h>
 #include <dirent.h>
 #include "common.h"
@@ -121,8 +123,8 @@ s32 load_file(u8 **wildcards, u8 *result)
     chosen_file = 0;
     chosen_dir = 0;
 
-    getcwd(current_dir_name, MAX_PATH);
-
+	sprintf(current_dir_name, "%s/.gpsp", getenv("HOME"));
+	mkdir(current_dir_name, 0755);
     current_dir = opendir(current_dir_name);
 
     do

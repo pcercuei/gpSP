@@ -19,6 +19,7 @@
 
 #include "common.h"
 #include <sys/time.h>
+#include <stdlib.h>
 
 extern SDL_Surface *screen;
 
@@ -179,7 +180,8 @@ int main(int argc, char *argv[])
   init_gamepak_buffer();
 
   // Copy the directory path of the executable into main_path
-  getcwd(main_path, 512);
+  sprintf(main_path, "%s/.gpsp", getenv("HOME"));
+  mkdir(main_path, 0755);
   load_config_file();
 
   gamepak_filename[0] = 0;
@@ -220,10 +222,6 @@ int main(int argc, char *argv[])
 #endif
 
   init_main();
-  init_video();
-  init_sound();
-
-  init_input();
 
   video_resolution_large();
 
@@ -235,6 +233,10 @@ int main(int argc, char *argv[])
       quit();
     }
 
+	init_video();
+	init_sound();
+	init_input();
+
     set_gba_resolution(screen_scale);
     video_resolution_small();
 
@@ -243,6 +245,10 @@ int main(int argc, char *argv[])
   }
   else
   {
+	init_video();
+	init_sound();
+	init_input();
+
     if(load_file(file_ext, load_filename) == -1)
     {
       menu(copy_screen());
@@ -864,12 +870,20 @@ void get_ticks_us(u64 *ticks_return)
 
 void change_ext(u8 *src, u8 *buffer, u8 *extension)
 {
-  u8 *dot_position;
-  strcpy(buffer, src);
-  dot_position = strrchr(buffer, '.');
+  u8 *position;
 
-  if(dot_position)
-    strcpy(dot_position, extension);
+  strcpy(buffer, main_path);
+  strcat(buffer, "/");
+
+  position = strrchr(src, '/');
+  if (position)
+	src = position+1;
+
+  strcat(buffer, src);
+  position = strrchr(buffer, '.');
+
+  if(position)
+    strcpy(position, extension);
 }
 
 #define main_savestate_builder(type)                                          \
@@ -892,3 +906,4 @@ void print_out(u32 address, u32 pc)
   update_screen();
   delay_us(5000000);
 }
+
