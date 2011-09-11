@@ -3584,8 +3584,8 @@ invalidate_icache_region:
   nop
 
 iir_loop:
-  cache 8, ($4)                   # invalidate icache line
-  cache 8, ($4)                   # do it again for good luck :P
+#  cache 8, ($4)                   # invalidate icache line
+#  cache 8, ($4)                   # do it again for good luck :P
   addiu $2, $2, -1                # next loop iteration
   bne $2, $0, iir_loop            # loop
   addiu $4, $4, 64                # go to next cache line (delay slot)
