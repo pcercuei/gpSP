@@ -49,7 +49,7 @@
 
 #endif
 
-#define COLOR_BG            color16(2, 8, 10)
+#define COLOR_BG            color16(20, 10, 10)
 #define COLOR_ROM_INFO      color16(22, 36, 26)
 #define COLOR_ACTIVE_ITEM   color16(31, 63, 31)
 #define COLOR_INACTIVE_ITEM color16(13, 40, 18)
@@ -1321,15 +1321,12 @@ u32 menu(u16 *original_screen)
     submenu_option(&cheats_misc_menu, "Cheats and Miscellaneous options",
      "Select to manage cheats, set backup behavior, and set device clock\n"
      "speed.", 9),
-    action_option(menu_load, NULL, "Load new game",
-     "Select to load a new game (will exit a game if currently playing).",
-     11),
     action_option(menu_restart, NULL, "Restart game",
-     "Select to reset the GBA with the current game loaded.", 12),
+     "Select to reset the GBA with the current game loaded.", 11),
     action_option(menu_exit, NULL, "Return to game",
-     "Select to exit this menu and resume gameplay.", 13),
+     "Select to exit this menu and resume gameplay.", 12),
     action_option(menu_quit, NULL, "Exit gpSP",
-     "Select to exit gpSP and return to the PSP XMB/loader.", 15)
+     "Select to exit gpSP and return to the PSP XMB/loader.", 14)
   };
 
   make_menu(main, submenu_main, NULL);
