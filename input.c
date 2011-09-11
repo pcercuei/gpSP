@@ -539,134 +539,144 @@ u32 update_input()
 
       case SDL_KEYDOWN:
       {
-        /* if(event.key.keysym.sym == SDLK_ESCAPE)
-        {
-          quit();
-        }
-		*/
+		switch(event.key.keysym.sym)
+		{
+			case SDLK_SPACE:
+			{
+			  u16 *screen_copy = copy_screen();
+			  u32 ret_val = menu(screen_copy);
+			  free(screen_copy);
+			  key = 0;
+			  io_registers[REG_P1] = 0x3FF;
+			  return ret_val;
+			}
 
-        if(event.key.keysym.sym == SDLK_SPACE)
-        {
-          u16 *screen_copy = copy_screen();
-          u32 ret_val = menu(screen_copy);
-          free(screen_copy);
+			case SDLK_F1:
+			{
+			  current_debug_state = STEP;
+			  break;
+			}
 
-          return ret_val;
-//          return adjust_frameskip(0);
-        }
-        else
+			case SDLK_F2:
+			{
+			  FILE *fp = fopen("palette_ram.bin", "wb");
+			  printf("writing palette RAM\n");
+			  fwrite(palette_ram, 1024, 1, fp);
+			  fclose(fp);
+			  printf("writing palette VRAM\n");
+			  fp = fopen("vram.bin", "wb");
+			  fwrite(vram, 1024 * 96, 1, fp);
+			  fclose(fp);
+			  printf("writing palette OAM RAM\n");
+			  fp = fopen("oam_ram.bin", "wb");
+			  fwrite(oam_ram, 1024, 1, fp);
+			  fclose(fp);
+			  printf("writing palette I/O registers\n");
+			  fp = fopen("io_registers.bin", "wb");
+			  fwrite(io_registers, 1024, 1, fp);
+			  fclose(fp);
+			  break;
+			}
 
-        if(event.key.keysym.sym == SDLK_F1)
-        {
-          current_debug_state = STEP;
-        }
-        else
+			case SDLK_F3:
+			{
+			  dump_translation_cache();
+			  break;
+			}
 
-        if(event.key.keysym.sym == SDLK_F2)
-        {
-          FILE *fp = fopen("palette_ram.bin", "wb");
-          printf("writing palette RAM\n");
-          fwrite(palette_ram, 1024, 1, fp);
-          fclose(fp);
-          printf("writing palette VRAM\n");
-          fp = fopen("vram.bin", "wb");
-          fwrite(vram, 1024 * 96, 1, fp);
-          fclose(fp);
-          printf("writing palette OAM RAM\n");
-          fp = fopen("oam_ram.bin", "wb");
-          fwrite(oam_ram, 1024, 1, fp);
-          fclose(fp);
-          printf("writing palette I/O registers\n");
-          fp = fopen("io_registers.bin", "wb");
-          fwrite(io_registers, 1024, 1, fp);
-          fclose(fp);
-        }
-        else
-
-        if(event.key.keysym.sym == SDLK_F3)
-        {
-          dump_translation_cache();
-        }
-        else
 #ifdef ZAURUS
-        if(event.key.keysym.sym == SDLK_5)
+			case SDLK_5:
 #else
-        if(event.key.keysym.sym == SDLK_F5)
+			case SDLK_F5:
 #endif
-        {
-          u8 current_savestate_filename[512];
-          u16 *current_screen = copy_screen();
-          get_savestate_filename_noshot(savestate_slot,
-           current_savestate_filename);
-          if(save_state(current_savestate_filename, current_screen))
-            strcpy(ssmsg, "saved");
-          free(current_screen);
-        }
-        else
-#ifdef ZAURUS
-        if(event.key.keysym.sym == SDLK_7)
-#else
-        if(event.key.keysym.sym == SDLK_F7)
-#endif
-        {
-          u8 current_savestate_filename[512];
-          get_savestate_filename_noshot(savestate_slot,
-           current_savestate_filename);
-          if(load_state(current_savestate_filename))
-            strcpy(ssmsg, "load");
-          current_debug_state = STEP;
-          return 1;
-        }
-        else
-#ifdef ZAURUS
-        if(event.key.keysym.sym == SDLK_1)
-#else
-        if(event.key.keysym.sym == SDLK_BACKQUOTE)
-#endif
-        {
-          synchronize_flag ^= 1;
-        }
-#ifdef ZAURUS
-        else 
-        if(event.key.keysym.sym == SDLK_2) {
-          if(current_frameskip_type == 2)
-            current_frameskip_type = 0;
-          else
-            current_frameskip_type++;
-        }
-        else 
-        if(event.key.keysym.sym == SDLK_3) {
-          if(frameskip_value < 9)
-            frameskip_value++;
-        }
-        else
-        if(event.key.keysym.sym == SDLK_4) {
-          if(frameskip_value)
-            frameskip_value--;
-        }
-        else
-        if(event.key.keysym.sym == SDLK_9) {
-          if(savestate_slot < 4)
-            savestate_slot++;
-          else
-            savestate_slot = 0;
-        }
-        else
-        if(event.key.keysym.sym == SDLK_0) {
-          if(status_display)
-            status_display = 0;
-          else
-            status_display = 1;
-        }
-#endif
-        else
-        {
-          key |= key_map(event.key.keysym.sym);
-          trigger_key(key);
-        }
+			{
+			  u8 current_savestate_filename[512];
+			  u16 *current_screen = copy_screen();
+			  get_savestate_filename_noshot(savestate_slot,
+						  current_savestate_filename);
+			  if(save_state(current_savestate_filename, current_screen))
+				strcpy(ssmsg, "saved");
+			  free(current_screen);
+			  break;
+			}
 
-        break;
-      }
+#ifdef ZAURUS
+			case SDLK_7:
+#else
+			case SDLK_F7:
+#endif
+			{
+			  u8 current_savestate_filename[512];
+			  get_savestate_filename_noshot(savestate_slot,
+						  current_savestate_filename);
+			  if(load_state(current_savestate_filename))
+				strcpy(ssmsg, "load");
+			  current_debug_state = STEP;
+			  return 1;
+			}
+
+#ifdef ZAURUS
+			case SDLK_1:
+#else
+			case SDLK_BACKQUOTE:
+#endif
+			{
+			  synchronize_flag ^= 1;
+			  break;
+			}
+
+#ifdef ZAURUS
+			case SDLK_2:
+			{
+			  if(current_frameskip_type == 2)
+				current_frameskip_type = 0;
+			  else
+				current_frameskip_type++;
+			  break;
+			}
+
+			case SDLK_3:
+			{
+			  if(frameskip_value < 9)
+				frameskip_value++;
+			  break;
+			}
+
+			case SDLK_4:
+			{
+			  if(frameskip_value)
+				frameskip_value--;
+			  break;
+			}
+
+			case SDLK_9:
+			{
+			  if(savestate_slot < 4)
+				savestate_slot++;
+			  else
+				savestate_slot = 0;
+			  break;
+			}
+
+			case SDLK_0:
+			{
+			  if(status_display)
+				status_display = 0;
+			  else
+				status_display = 1;
+			  break;
+			}
+
+			default:
+			{
+			  key |= key_map(event.key.keysym.sym);
+			  trigger_key(key);
+			  break;
+			}
+#endif
+		}
+		break;
+	  }
 
       case SDL_KEYUP:
       {
