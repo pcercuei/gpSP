@@ -107,8 +107,6 @@ typedef enum
   mips_special_multu     = 0x19,
   mips_special_div       = 0x1A,
   mips_special_divu      = 0x1B,
-  mips_special_madd      = 0x1C,
-  mips_special_maddu     = 0x1D,
   mips_special_add       = 0x20,
   mips_special_addu      = 0x21,
   mips_special_sub       = 0x22,
@@ -120,6 +118,12 @@ typedef enum
   mips_special_slt       = 0x2A,
   mips_special_sltu      = 0x2B
 } mips_function_special;
+
+typedef enum
+{
+  mips_special2_madd     = 0x00,
+  mips_special2_maddu    = 0x01,
+} mips_function_special2;
 
 typedef enum
 {
@@ -181,6 +185,12 @@ typedef enum
   *((u32 *)translation_ptr) = (mips_opcode_special << 26) |                   \
    (rs << 21) | (rt << 16) | (rd << 11) | (shift << 6) |                      \
    mips_special_##function;                                                   \
+  translation_ptr += 4                                                        \
+
+#define mips_emit_special2(function, rs, rt, imm_a, imm_b)                    \
+  *((u32 *)translation_ptr) = (mips_opcode_special2 << 26) |                  \
+   (rs << 21) | (rt << 16) | (imm_a << 11) | (imm_b << 6) |                   \
+   mips_special2_##function;                                                  \
   translation_ptr += 4                                                        \
 
 #define mips_emit_special3(function, rs, rt, imm_a, imm_b)                    \
@@ -283,10 +293,10 @@ typedef enum
   mips_emit_special(divu, rs, rt, 0, 0)                                       \
 
 #define mips_emit_madd(rs, rt)                                                \
-  mips_emit_special(madd, rs, rt, 0, 0)                                       \
+  mips_emit_special2(madd, rs, rt, 0, 0)                                      \
 
 #define mips_emit_maddu(rs, rt)                                               \
-  mips_emit_special(maddu, rs, rt, 0, 0)                                      \
+  mips_emit_special2(maddu, rs, rt, 0, 0)                                     \
 
 #define mips_emit_movn(rd, rs, rt)                                            \
   mips_emit_special(movn, rs, rt, rd, 0)                                      \
