@@ -1120,6 +1120,7 @@ u32 menu(u16 *original_screen)
 #endif
   u8 *update_backup_options[] = { "Exit only", "Automatic" };
 
+#ifndef ZAURUS
   u8 *clock_speed_options[] =
   {
     "1", "2", "3", "4", "5", "6", "7"
@@ -1147,6 +1148,7 @@ u32 menu(u16 *original_screen)
     "RAPIDFIRE R",
     "NOTHING"
   };
+#endif
 
   // Marker for help information, don't go past this mark (except \n)------*
   menu_option_type graphics_sound_options[] =
@@ -1157,12 +1159,14 @@ u32 menu(u16 *original_screen)
      "screen. Select unscaled 3:2 for GBA resolution, scaled 3:2 for GBA\n"
      "aspect ratio scaled to fill the height of the PSP screen, and\n"
      "fullscreen to fill the entire PSP screen.", 2),
+#ifndef ZAURUS
     string_selection_option(NULL, "Screen filtering", yes_no_options,
      (u32 *)(&screen_filter), 2,
      "Determines whether or not bilinear filtering should be used when\n"
      "scaling the screen. Selecting this will produce a more even and\n"
      "smooth image, at the cost of being blurry and having less vibrant\n"
      "colors.", 3),
+#endif
     string_selection_option(NULL, "Frameskip type", frameskip_options,
      (u32 *)(&current_frameskip_type), 3,
      "Determines what kind of frameskipping should be employed.\n"
@@ -1218,10 +1222,12 @@ u32 menu(u16 *original_screen)
     cheat_option(7),
     cheat_option(8),
     cheat_option(9),
+#ifndef ZAURUS
     string_selection_option(NULL, "Clock speed",
      clock_speed_options, &clock_speed_number, 7,
      "Change the clock speed of the device. Higher clock speed will yield\n"
      "better performance, but will use drain battery life further.", 11),
+#endif
     string_selection_option(NULL, "Update backup",
      update_backup_options, &update_backup_flag, 2,
      "Determines when in-game save files should be written back to\n"
@@ -1257,6 +1263,7 @@ u32 menu(u16 *original_screen)
 
   make_menu(savestate, submenu_savestate, NULL);
 
+#ifndef ZAURUS
   menu_option_type gamepad_config_options[] =
   {
     gamepad_config_option("D-pad up     ", 0),
@@ -1293,6 +1300,7 @@ u32 menu(u16 *original_screen)
   };
 
   make_menu(analog_config, submenu_analog, NULL);
+#endif
 
   menu_option_type main_options[] =
   {
@@ -1313,11 +1321,13 @@ u32 menu(u16 *original_screen)
      "Select to enter a menu for loading, saving, and viewing the\n"
      "currently active savestate for this game (or to load a savestate\n"
      "file from another game)", 4),
+#ifndef ZAURUS
     submenu_option(&gamepad_config_menu, "Configure gamepad input",
      "Select to change the in-game behavior of the PSP buttons and d-pad.",
      6),
     submenu_option(&analog_config_menu, "Configure analog input",
      "Select to change the in-game behavior of the PSP analog nub.", 7),
+#endif
     submenu_option(&cheats_misc_menu, "Cheats and Miscellaneous options",
      "Select to manage cheats, set backup behavior, and set device clock\n"
      "speed.", 9),
