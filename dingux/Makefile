@@ -15,7 +15,7 @@ BIN       = gpsp.dge
 # Platform specific definitions 
 
 COMMON_OPT = -g
-COMMON_OPT += -O3 -fno-builtin -fomit-frame-pointer
+COMMON_OPT += -O2 -fno-builtin -fomit-frame-pointer
 
 VPATH      += ..
 CFLAGS     += -DZAURUS
