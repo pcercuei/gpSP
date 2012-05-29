@@ -3363,120 +3363,130 @@ void flip_screen()
 
 // GPL software scaler, courtesy of Ayla (paul@crapouillou.net)
 // Upscale from 240x160 to 320x240
-static void gba_upscale(uint32_t *to, uint32_t *from, uint32_t pitch)
+static void gba_upscale(uint32_t *to, uint32_t *from, uint32_t src_x, uint32_t src_y, uint32_t pitch)
 {
-    /* Before:
-     *    a b c d e f
-     *    g h i j k l
-     *
-     * After (parenthesis = average):
-     *    a      (a,b)      (b,c)      c      d      (d,e)      (e,f)      f
-     *    (a,g)  (a,b,g,h)  (b,c,h,i)  (c,i)  (d,j)  (d,e,j,k)  (e,f,k,l)  (f,l)
-     *    g      (g,h)      (h,i)      i      j      (j,k)      (k,l)      l
-     */
+	/* Before:
+	 *    a b c d e f
+	 *    g h i j k l
+	 *
+	 * After (parenthesis = average):
+	 *    a      (a,b)      (b,c)      c      d      (d,e)      (e,f)      f
+	 *    (a,g)  (a,b,g,h)  (b,c,h,i)  (c,i)  (d,j)  (d,e,j,k)  (e,f,k,l)  (f,l)
+	 *    g      (g,h)      (h,i)      i      j      (j,k)      (k,l)      l
+	 */
 
-    uint32_t reg1, reg2, reg3, reg4, reg5; //, reg6;
-    unsigned int x, y;
+	const uint32_t dst_x = src_x * 4/3;
 
-
-    for (y=0; y<240/3; y++) {
-        for (x=0; x<320/8; x++) {
-            __builtin_prefetch(to+4, 1);
-
-            // Read b-a
-            reg1 = *from;
-            reg2 = (reg1 & 0xf7de0000) >> 1;
-            reg1 &= 0xffff;
-            reg1 |= reg2 + ((reg1 & 0xf7de) << 15);
-
-            // Write (a,b)-a
-            *to = reg1;
-//			reg6 = (reg1 >> 16) & 1;
-            reg1 = (reg1 & 0xf7def7de) >> 1;
-
-            // Read h-g
-            reg3 = *(from++ + 240/2 + pitch/2);
-            reg4 = (reg3 & 0xf7de0000) >> 1;
-            reg3 &= 0xffff;
-            reg3 |= reg4 + ((reg3 & 0xf7de) << 15);
-
-            // Write (g,h)-g
-            *(to + 2*320/2) = reg3;
-//			reg6 &= reg3 >> 16;
-            reg3 = (reg3 & 0xf7def7de) >> 1;
+	uint32_t reg1, reg2, reg3, reg4, reg5;
+	size_t x, y;
 
 
-            // Write (a,b,g,h)-(a,g)
-            *(to++ + 320/2) = reg1 + reg3 + 0x10000; // + reg6;
+	for (y=0; y<src_y/2; y++) {
+		for (x=0; x<src_x/6; x++) {
+			__builtin_prefetch(to+4, 1);
 
-            // Read d-c
-            reg1 = *from;
-            reg2 = ((reg2 + ((reg1 & 0xf7de) << 15)) >> 16) | ((reg1 & 0xffff) << 16);
+			/* Read b-a */
+			reg1 = *from;
+			reg2 = ((reg1 & 0xf7de0000) >> 1) + (reg1 & 0x08210000);
 
-            // Write c-(b,c)
-            *to = reg2;
-//			reg6 = reg2 & 1;
-            reg2 = (reg2 & 0xf7def7de) >> 1;
+			/* Read h-g */
+			reg3 = *(from++ + src_x/2 + pitch/2);
+			reg4 = ((reg3 & 0xf7de0000) >> 1) + (reg3 & 0x08210000);
 
-            // Read j-i
-            reg3 = *(from++ + 240/2 + pitch/2);
-            reg4 = ((reg4 + ((reg3 & 0xf7de) << 15)) >> 16) | ((reg3 & 0xffff) << 16);
+			reg1 &= 0xffff;
+			reg1 |= reg2 + ((reg1 & 0xf7de) << 15);
 
-            // Write i-(h,i)
-            *(to + 2*320/2) = reg4;
-//			reg6 &= reg4;
-            reg4 = (reg4 & 0xf7def7de) >> 1;
+			/* Write (a,b)-a */
+			*to = reg1;
 
-            // Write (c,i)-(b,c,h,i)
-            *(to++ + 320/2) = reg2 + reg4 + 1; // + reg6;
+			reg3 &= 0xffff;
+			reg3 |= reg4 + ((reg3 & 0xf7de) << 15);
 
-            // Read f-e
-            reg2 = *from;
-            reg4 = (reg2 & 0xf7def7de) >> 1;
+			/* Write (g,h)-g */
+			*(to + 2*dst_x/2) = reg3;
 
-            // Write (d,e)-d
-            reg1 >>= 16;
-            reg4 = reg1 | ((reg4 + ((reg1 & 0xf7de) >> 1)) << 16);
-            *to = reg4;
-//			reg6 = (reg4 >> 16) & 1;
-            reg4 = (reg4 & 0xf7def7de) >> 1;
+			if (reg1 != reg3) {
+				reg1 = (reg1 & 0x08210821)
+				  + ((reg1 & 0xf7def7de) >> 1)
+				  + ((reg3 & 0xf7def7de) >> 1);
+			}
 
-            // Read l-k
-            reg1 = *(from++ + 240/2 + pitch/2);
-            reg5 = (reg1 & 0xf7def7de) >> 1;
+			/* Write (a,b,g,h)-(a,g) */
+			*(to++ + dst_x/2) = reg1;
 
-            // Write (j,k)-j
-            reg3 >>= 16;
-            reg5 = reg3 | ((reg5 + ((reg3 & 0xf7de) >> 1)) << 16);
-            *(to + 2*320/2) = reg5;
-//			reg6 &= reg5 >> 16;
-            reg5 = (reg5 & 0xf7def7de) >> 1;
+			/* Read d-c */
+			reg1 = *from;
+			reg2 = ((reg2 + ((reg1 & 0xf7de) << 15)) >> 16) | ((reg1 & 0xffff) << 16);
 
-            // Write (d,e,j,k)-(d,j)
-            *(to++ + 320/2) = reg4 + reg5 + 0x10000; // + reg6;
+			/* Write c-(b,c) */
+			*to = reg2;
 
-            // Write f-(e,f)
-            reg3 = (reg2 & 0xf7def7de) >> 1;
-            reg2 = (reg2 & 0xffff0000) | ((reg3 + (reg3 >> 16)) & 0xffff);
-            *to = reg2;
-//			reg6 = reg2 & 1;
-            reg2 = (reg2 & 0xf7def7de) >> 1;
+			/* Read j-i */
+			reg3 = *(from++ + src_x/2 + pitch/2);
+			reg4 = ((reg4 + ((reg3 & 0xf7de) << 15)) >> 16) | ((reg3 & 0xffff) << 16);
 
-            // Write l-(k,l)
-            reg3 = (reg1 & 0xf7def7de) >> 1;
-            reg1 = (reg1 & 0xffff0000) | ((reg3 + (reg3 >> 16)) & 0xffff);
-            *(to + 2*320/2) = reg1;
-//			reg6 &= reg1;
-            reg1 = (reg1 & 0xf7def7de) >> 1;
+			/* Write i-(h,i) */
+			*(to + 2*dst_x/2) = reg4;
 
-            // Write (f,l)-(e,f,k,l)
-            *(to++ + 320/2) = reg1 + reg2 + 1; // + reg6;
-        }
+			if (reg2 != reg4) {
+				reg2 = (reg2 & 0x08210821)
+				  + ((reg2 & 0xf7def7de) >> 1)
+				  + ((reg4 & 0xf7def7de) >> 1);
+			}
 
-        to += 2*320/2;
-        from += 240/2 + 2*pitch/2;
-    }
+			/* Write (c,i)-(b,c,h,i) */
+			*(to++ + dst_x/2) = reg2;
 
+			/* Read f-e */
+			reg2 = *from;
+			reg4 = (reg2 & 0xf7def7de) >> 1;
+
+			/* Write (d,e)-d */
+			reg1 >>= 16;
+			reg4 = reg1 | ((reg4 + ((reg1 & 0xf7de) >> 1) + (reg1 & 0x0821)) << 16);
+			*to = reg4;
+
+			/* Read l-k */
+			reg1 = *(from++ + src_x/2 + pitch/2);
+			reg5 = (reg1 & 0xf7def7de) >> 1;
+
+			/* Write (j,k)-j */
+			reg3 >>= 16;
+			reg5 = reg3 | ((reg5 + ((reg3 & 0xf7de) >> 1) + (reg3 & 0x0821)) << 16);
+			*(to + 2*dst_x/2) = reg5;
+
+			if (reg4 != reg5) {
+				reg4 = (reg4 & 0x08210821)
+				  + ((reg4 & 0xf7def7de) >> 1)
+				  + ((reg5 & 0xf7def7de) >> 1);
+			}
+
+			/* Write (d,e,j,k)-(d,j) */
+			*(to++ + dst_x/2) = reg4;
+
+			/* Write f-(e,f) */
+			reg3 = ((reg2 & 0xf7def7de) >> 1);
+			reg2 = (reg2 & 0xffff0000) | ((reg3 + (reg3 >> 16) + (reg2 & 0x0821)) & 0xffff);
+			*to = reg2;
+
+			/* Write l-(k,l) */
+			reg3 = ((reg1 & 0xf7def7de) >> 1);
+			reg1 = (reg1 & 0xffff0000) | ((reg3 + (reg3 >> 16) + (reg1 & 0x0821)) & 0xffff);
+			*(to + 2*dst_x/2) = reg1;
+
+			if (reg1 != reg2) {
+				reg1 = (reg1 & 0x08210821)
+				  + ((reg1 & 0xf7def7de) >> 1)
+				  + ((reg2 & 0xf7def7de) >> 1);
+			}
+
+			/* Write (f,l)-(e,f,k,l) */
+			*(to++ + dst_x/2) = reg1;
+		}
+
+		to += 2*dst_x/2;
+		from += src_x/2 + 2*pitch/2;
+	}
 }
 
 void update_normal(void)
@@ -3492,7 +3502,7 @@ void update_display(void)
 	else
 	{
 		uint32_t *src = (uint32_t *)screen->pixels + 20 + 80 * (320 - 240);
-		gba_upscale((uint32_t*)display->pixels, src, 320 - 240);
+		gba_upscale((uint32_t*)display->pixels, src, 240, 160, 320 - 240);
 	}
 
 	SDL_Flip(display);
