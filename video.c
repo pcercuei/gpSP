@@ -3363,7 +3363,7 @@ void flip_screen()
 
 // GPL software scaler, courtesy of Ayla (paul@crapouillou.net)
 // Upscale from 240x160 to 320x240
-static void gba_upscale(uint32_t *to, uint32_t *from, uint32_t src_x, uint32_t src_y, uint32_t pitch)
+void gba_upscale(uint32_t *to, uint32_t *from, uint32_t src_x, uint32_t src_y, uint32_t pitch)
 {
 	/* Before:
 	 *    a b c d e f
@@ -3383,7 +3383,7 @@ static void gba_upscale(uint32_t *to, uint32_t *from, uint32_t src_x, uint32_t s
 
 	for (y=0; y<src_y/2; y++) {
 		for (x=0; x<src_x/6; x++) {
-			__builtin_prefetch(to+4, 1);
+			prefetch(to+4, 1);
 
 			/* Read b-a */
 			reg1 = *from;
@@ -3405,11 +3405,10 @@ static void gba_upscale(uint32_t *to, uint32_t *from, uint32_t src_x, uint32_t s
 			/* Write (g,h)-g */
 			*(to + 2*dst_x/2) = reg3;
 
-			if (reg1 != reg3) {
+			if (unlikely(reg1 != reg3))
 				reg1 = (reg1 & 0x08210821)
-				  + ((reg1 & 0xf7def7de) >> 1)
-				  + ((reg3 & 0xf7def7de) >> 1);
-			}
+					+ ((reg1 & 0xf7def7de) >> 1)
+					+ ((reg3 & 0xf7def7de) >> 1);
 
 			/* Write (a,b,g,h)-(a,g) */
 			*(to++ + dst_x/2) = reg1;
@@ -3428,11 +3427,10 @@ static void gba_upscale(uint32_t *to, uint32_t *from, uint32_t src_x, uint32_t s
 			/* Write i-(h,i) */
 			*(to + 2*dst_x/2) = reg4;
 
-			if (reg2 != reg4) {
+			if (unlikely(reg2 != reg4))
 				reg2 = (reg2 & 0x08210821)
-				  + ((reg2 & 0xf7def7de) >> 1)
-				  + ((reg4 & 0xf7def7de) >> 1);
-			}
+					+ ((reg2 & 0xf7def7de) >> 1)
+					+ ((reg4 & 0xf7def7de) >> 1);
 
 			/* Write (c,i)-(b,c,h,i) */
 			*(to++ + dst_x/2) = reg2;
@@ -3455,11 +3453,10 @@ static void gba_upscale(uint32_t *to, uint32_t *from, uint32_t src_x, uint32_t s
 			reg5 = reg3 | ((reg5 + ((reg3 & 0xf7de) >> 1) + (reg3 & 0x0821)) << 16);
 			*(to + 2*dst_x/2) = reg5;
 
-			if (reg4 != reg5) {
+			if (unlikely(reg4 != reg5))
 				reg4 = (reg4 & 0x08210821)
-				  + ((reg4 & 0xf7def7de) >> 1)
-				  + ((reg5 & 0xf7def7de) >> 1);
-			}
+					+ ((reg4 & 0xf7def7de) >> 1)
+					+ ((reg5 & 0xf7def7de) >> 1);
 
 			/* Write (d,e,j,k)-(d,j) */
 			*(to++ + dst_x/2) = reg4;
@@ -3474,11 +3471,10 @@ static void gba_upscale(uint32_t *to, uint32_t *from, uint32_t src_x, uint32_t s
 			reg1 = (reg1 & 0xffff0000) | ((reg3 + (reg3 >> 16) + (reg1 & 0x0821)) & 0xffff);
 			*(to + 2*dst_x/2) = reg1;
 
-			if (reg1 != reg2) {
+			if (unlikely(reg1 != reg2))
 				reg1 = (reg1 & 0x08210821)
-				  + ((reg1 & 0xf7def7de) >> 1)
-				  + ((reg2 & 0xf7def7de) >> 1);
-			}
+					+ ((reg1 & 0xf7def7de) >> 1)
+					+ ((reg2 & 0xf7def7de) >> 1);
 
 			/* Write (f,l)-(e,f,k,l) */
 			*(to++ + dst_x/2) = reg1;
