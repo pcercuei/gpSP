@@ -2874,7 +2874,7 @@ block_lookup_address_builder(dual);
   ((opcode & 0x12FFF10) == 0x12FFF10) ||                                      \
   ((opcode & 0x8108000) == 0x8108000) ||                                      \
   ((opcode >= 0xA000000) && (opcode < 0xF000000)) ||                          \
-  ((opcode > 0xF000000) && (!swi_hle_handle[((opcode >> 16) & 0xFF)])))       \
+  ((opcode > 0xF000000) && (!swi_hle_handle[((opcode >> 16) & 0xFF)][0])))    \
 
 #define arm_opcode_branch                                                     \
   ((opcode & 0xE000000) == 0xA000000)                                         \
@@ -2969,7 +2969,7 @@ block_lookup_address_builder(dual);
 #define thumb_exit_point                                                      \
   (((opcode >= 0xD000) && (opcode < 0xDF00)) ||                               \
    (((opcode & 0xFF00) == 0xDF00) &&                                          \
-    (!swi_hle_handle[opcode & 0xFF])) ||                                      \
+    (!swi_hle_handle[opcode & 0xFF][0])) ||                                   \
    ((opcode >= 0xE000) && (opcode < 0xE800)) ||                               \
    ((opcode & 0xFF00) == 0x4700) ||                                           \
    ((opcode & 0xFF00) == 0xBD00) ||                                           \

@@ -45,6 +45,7 @@
 .global execute_ror_flags_reg
 .global execute_arm_translate
 .global step_debug_mips
+.global call_bios_hle
 .global reg_check
 
 .global memory_map_read
@@ -3577,6 +3578,18 @@ step_debug_mips:
   save_registers
   addiu $5, $17, 0
   m_jal step_debug
+  nop
+  restore_registers
+  lw $ra, ($sp)
+  jr $ra
+  addiu $sp, $sp, 4
+
+call_bios_hle:
+  addiu $sp, $sp, -4
+  sw $ra, ($sp)
+  collapse_flags
+  save_registers
+  jalr $1
   nop
   restore_registers
   lw $ra, ($sp)
