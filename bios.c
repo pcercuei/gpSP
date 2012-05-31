@@ -180,6 +180,9 @@ static void bios_cpufastset(u32 src, u32 dst, u32 cnt)
 	void *dstp;
 	u32 count = cnt & 0x1FFFFF;
 
+	if (count & 7)
+		count = (count & ~7) + 8;
+
 	if(((src & 0xe000000) == 0) ||
 				((src + (((cnt << 11) >> 9) & 0x1FFFFF)) & 0xe000000) == 0)
 		return;
