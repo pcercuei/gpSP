@@ -170,6 +170,16 @@ static void *get_address(u32 addr)
 			oam_update = 1;
 			return (void *) oam_ram + (addr & 0x3ff);
 
+		/* Gamepak ROM */
+		case 0x08 ... 0x0D:
+			if ((addr & 0x1ffffff) >= gamepak_size)
+				return NULL;
+
+			u8 *map = memory_map_read[addr >> 15];
+			if (!map)
+				map = load_gamepak_page((addr >> 15) & 0x3ff);
+			return (void *) map + (addr & 0x7fff);
+
 		default:
 			return NULL;
 	}
