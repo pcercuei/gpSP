@@ -197,8 +197,11 @@ static void bios_cpufastset(u32 src, u32 dst, u32 cnt)
 		// fill
 
 		u32 value = read_memory32(src);
+		int unexpected = value && (((value & 0xff) != ((value >> 8) & 0xff))
+					|| ((value & 0xff) != ((value >> 16) & 0xff))
+					|| ((value & 0xff) != ((value >> 24) & 0xff)));
 
-		if (dstp) {
+		if (dstp && !unexpected) {
 			memset(dstp, value, count * 4);
 			return;
 		}
