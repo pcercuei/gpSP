@@ -4,9 +4,8 @@
 
 # Global definitions
 
-PREFIX  = /Developer/dingux/mipsel-linux-uclibc
-CC        = mipsel-linux-uclibc-gcc
-STRIP     = mipsel-linux-uclibc-strip
+CC        = mipsel-linux-gcc
+STRIP     = mipsel-linux-strip
 
 OBJS      = main.o cpu.o memory.o video.o input.o sound.o gui.o \
             cheats.o zip.o cpu_threaded.o mips_stub.o
@@ -20,14 +19,12 @@ COMMON_OPT += -O2 -fno-builtin -fomit-frame-pointer
 VPATH      += ..
 CFLAGS     += -DZAURUS
 # NOTE: -funroll-loops will slow down compiling considerably
-CFLAGS     += -march=mips32 -G0 -mtune=r4600
 CFLAGS     += $(COMMON_OPT)
 
 ASFLAGS    += $(COMMON_OPT)
-ASFLAGS    += -march=mips32
 
-INCLUDES   = -I${PREFIX}/include -I${PREFIX}/include/SDL
-LIBS       = -L${PREFIX}/lib -lSDL -lpthread -lz 
+INCLUDES   =
+LIBS       = -lSDL -lpthread -lz -lm
 
 # Compilation:
 
