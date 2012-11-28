@@ -166,6 +166,7 @@ int main(int argc, char *argv[])
   u32 ticks;
   u32 dispstat;
   u8 load_filename[512];
+  u8 bios_file[512];
 	
 #ifdef PSP_BUILD
   sceKernelRegisterSubIntrHandler(PSP_VBLANK_INT, 0,
@@ -186,7 +187,8 @@ int main(int argc, char *argv[])
 
   gamepak_filename[0] = 0;
 
-  if(load_bios("gba_bios.bin") == -1)
+  sprintf(bios_file, "%s/gba_bios.bin", main_path);
+  if(load_bios(bios_file) == -1)
   {
 #ifdef PSP_BUILD
     gui_action_type gui_action = CURSOR_NONE;
