@@ -4,9 +4,9 @@
 
 # Global definitions
 
-PREFIX  = /Developer/dingux/mipsel-linux-uclibc
-CC        = mipsel-linux-uclibc-gcc
-STRIP     = mipsel-linux-uclibc-strip
+EXE_PREFIX = mipsel-linux-
+CC        = ${EXE_PREFIX}gcc
+STRIP     = ${EXE_PREFIX}strip
 
 OBJS      = main.o cpu.o memory.o video.o input.o sound.o gui.o \
             cheats.o zip.o cpu_threaded.o mips_stub.o
@@ -20,14 +20,14 @@ COMMON_OPT += -O2 -fno-builtin -fomit-frame-pointer
 VPATH      += ..
 CFLAGS     += -DZAURUS
 # NOTE: -funroll-loops will slow down compiling considerably
-CFLAGS     += -march=mips32 -G0 -mtune=r4600
 CFLAGS     += $(COMMON_OPT)
+CFLAGS     += `${DINGUX_SDK}/usr/bin/sdl-config --cflags`
 
 ASFLAGS    += $(COMMON_OPT)
-ASFLAGS    += -march=mips32
 
-INCLUDES   = -I${PREFIX}/include -I${PREFIX}/include/SDL
-LIBS       = -L${PREFIX}/lib -lSDL -lpthread -lz 
+INCLUDES   =
+LIBS       = `${DINGUX_SDK}/usr/bin/sdl-config --libs` -lz
+#LIBS       = -lSDL -lpthread -lz -lm
 
 # Compilation:
 

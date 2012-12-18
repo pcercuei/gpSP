@@ -126,7 +126,6 @@
 
 .set noat
 .set noreorder
-.set mips32
 
 
 # pseudo instructions for MIPS32
@@ -136,60 +135,6 @@
 #define t1 $9
 #define t2 $10
 #define gp $28
-
-.macro m_ins dest,src,pos,size
-	sw	t1,-8($sp)
-	sw	t0,-4($sp)
-
-	li	t0,~(((1<<\size)-1)<<\pos)
-	and	\dest,t0
-	sll	t1,\src,\pos
-	li	t0,((1<<\size)-1)<<\pos
-	and	t1,t0
-	or	\dest,t1
-	
-	lw	t1,-8($sp)
-	lw	t0,-4($sp)	
-.endm
-
-.macro m_ext dest,src,pos,size
-	sw	t0,-4($sp)
-	srl	\dest,\src,\pos
-	li	t0,( (1 << \size) - 1 )
-	and	\dest,t0
-	lw	t0,-4($sp)
-.endm
-
-
-.macro m_seb dest,src
-	sll \dest,\src,24
-	sra \dest,\src,24
-.endm
-
-.macro m_seh dest,src
-	sll \dest,\src,16
-	sra \dest,\src,16
-.endm
-
-.macro m_ror dest,src,shift
-	sw	t0,-4($sp)
-	srl	t0,\dest,\shift
-	sll	\dest,32-\shift
-	or	\dest,t0
-	lw	t0,-4($sp)
-.endm
-
-.macro m_rorv dest,src,shift
-	sw	 t1,-8($sp)
-	sw	 t0,-4($sp)
-	srlv t0,\dest,\shift
-	li   t1,32
-	sub  t1,\shift	
-	sllv \dest,\dest,t1
-	or  \dest,t0
-	lw	t1,-8($sp)
-	lw	t0,-4($sp)
-.endm
 
 .macro m_jal address
 	addiu	$sp,$sp,-16
@@ -204,7 +149,7 @@
 # make sure $16 has the register base for these macros
 
 .macro collapse_flag flag_reg, shift
-  m_ins $2, $\flag_reg, \shift, 1    # insert flag into CPSR
+  ins $2, $\flag_reg, \shift, 1    # insert flag into CPSR
 .endm
 
 .macro collapse_flags
@@ -218,7 +163,7 @@
 .endm
 
 .macro extract_flag shift, flag_reg
-  m_ext $\flag_reg, $1, \shift, 1   # extract flag from CPSR
+  ext $\flag_reg, $1, \shift, 1   # extract flag from CPSR
 .endm
 
 .macro extract_flags_body         # extract flags from $1
@@ -427,7 +372,7 @@ mips_indirect_branch_dual:
   srl $2, $2, 2                   # remove lower two bits
 
   lui $1, %hi(3 << 26)            # $1 = 3 (JAL opcode)
-  m_ins $1, $2, 0, 26               # insert offset into jal
+  ins $1, $2, 0, 26               # insert offset into jal
 
   addiu $ra, $ra, -8              # rewind return address to function call
   sw $1, ($ra)                    # modify to call new handler
@@ -473,7 +418,7 @@ mips_indirect_branch_dual:
   addiu $1, $0, 4                 # force address to 0x1 (open)
 
 1:
-  m_ins $1, $4, 6, \alignment       # place alignment bits into offset
+  ins $1, $4, 6, \alignment       # place alignment bits into offset
   lui $2, %hi(\ftable)
 
   addu $2, $2, $1
@@ -482,7 +427,7 @@ mips_indirect_branch_dual:
   srl $2, $2, 2                   # remove lower two bits
 
   lui $1, %hi(3 << 26)            # $1 = 3 (JAL opcode)
-  m_ins $1, $2, 0, 26               # insert offset into jal
+  ins $1, $2, 0, 26               # insert offset into jal
 
   addiu $ra, $ra, -8              # rewind return address to function call
   sw $1, ($ra)                    # modify to call new handler
@@ -538,7 +483,7 @@ mips_indirect_branch_dual:
 
 .macro region_check_align region, align_bits, alignment, patch_handler
   srl $1, $4, 24                  # check upper 8bits of address
-  m_ins $1, $4, 8, \align_bits      # look at lower bits of address too
+  ins $1, $4, 8, \align_bits      # look at lower bits of address too
   # See if it is the given region and alignment
   xori $1, $1, (\region | (\alignment << 8))
   bne $1, $0, \patch_handler      # if not repatch/try again
@@ -550,7 +495,7 @@ mips_indirect_branch_dual:
   addiu $1, $1, -1                # non-zero if it is not a low open
   sltu $1, $0, $1                 # true if $1 != 0
   and $1, $1, $2                  # true if low address and not open
-  m_ext $2, $4, 0, \align_bits      # $2 = low bits of 4
+  ext $2, $4, 0, \align_bits      # $2 = low bits of 4
   xori $2, $2, \alignment         # true if alignment doesn't match
   or $1, $1, $2                   # align failure will trigger too
   bne $1, $0, \patch_handler      # if above is true, patch
@@ -597,8 +542,8 @@ mips_indirect_branch_dual:
 .macro translate_region_ewram_core mask
   lui $2, %hi(ewram + 0x8000)     # generate upper address (delay)
   andi $1, $4, \mask              # generate 15bit offset
-  m_ext $4, $4, 15, 3               # isolate top 3 bits of offset
-  m_ins $1, $4, 16, 3               # reinsert into top 4 bits
+  ext $4, $4, 15, 3               # isolate top 3 bits of offset
+  ins $1, $4, 16, 3               # reinsert into top 4 bits
   addu $2, $2, $1
 .endm
 
@@ -635,7 +580,7 @@ mips_indirect_branch_dual:
 
 .macro translate_region_vram_core
   addiu $2, $2, -3                # see if it's 3
-  m_ext $4, $4, 0, 17               # generate 17bit offset
+  ext $4, $4, 0, 17               # generate 17bit offset
   bne $2, $0, 1f
   lui $1, %hi(vram)               # start loading vram address (delay)
 
@@ -646,48 +591,48 @@ mips_indirect_branch_dual:
 .endm
 
 .macro translate_region_vram patch_handler
-  m_ext $2, $4, 15, 2               # $2 = bits 15 and 16 of address (delay)
+  ext $2, $4, 15, 2               # $2 = bits 15 and 16 of address (delay)
   region_check 6, \patch_handler
   nop
   translate_region_vram_core
 .endm
 
 .macro translate_region_vram_load_align align_bits, alignment, patch_handler
-  m_ext $2, $4, 15, 2               # $2 = bits 15 and 16 of address (delay)
+  ext $2, $4, 15, 2               # $2 = bits 15 and 16 of address (delay)
   region_check_align 6, \align_bits, \alignment, \patch_handler
   nop
   translate_region_vram_core
 .endm
 
 .macro translate_region_vram_load_align16 align_bits, alignment, patch_handler
-  m_ext $2, $4, 15, 2               # $2 = bits 15 and 16 of address (delay)
+  ext $2, $4, 15, 2               # $2 = bits 15 and 16 of address (delay)
   region_check_align 6, \align_bits, \alignment, \patch_handler
   nop
-  m_ins $4, $0, 0, 1                # mask out lower bit of address
+  ins $4, $0, 0, 1                # mask out lower bit of address
   translate_region_vram_core
 .endm
 
 .macro translate_region_vram_load_align32 align_bits, alignment, patch_handler
-  m_ext $2, $4, 15, 2               # $2 = bits 15 and 16 of address (delay)
+  ext $2, $4, 15, 2               # $2 = bits 15 and 16 of address (delay)
   region_check_align 6, \align_bits, \alignment, \patch_handler
   nop
-  m_ins $4, $0, 0, 2                # mask out lower two bits of address
+  ins $4, $0, 0, 2                # mask out lower two bits of address
   translate_region_vram_core
 .endm
 
 .macro translate_region_vram_store_align16 patch_handler
-  m_ext $2, $4, 15, 2               # $2 = bits 15 and 16 of address (delay)
+  ext $2, $4, 15, 2               # $2 = bits 15 and 16 of address (delay)
   region_check 6, \patch_handler
   nop
-  m_ins $4, $0, 0, 1                # mask out lower bit of address
+  ins $4, $0, 0, 1                # mask out lower bit of address
   translate_region_vram_core
 .endm
 
 .macro translate_region_vram_store_align32 patch_handler
-  m_ext $2, $4, 15, 2               # $2 = bits 15 and 16 of address (delay)
+  ext $2, $4, 15, 2               # $2 = bits 15 and 16 of address (delay)
   region_check 6, \patch_handler
   nop
-  m_ins $4, $0, 0, 2                # mask out lower two bits of address
+  ins $4, $0, 0, 2                # mask out lower two bits of address
   translate_region_vram_core
 .endm
 
@@ -704,7 +649,7 @@ mips_indirect_branch_dual:
   sw $ra, REG_SAVE2($16)          # save return address
 
   save_registers                  # save the registers
-  m_ext $4, $4, 15, 10              # $4 = (address >> 15) & 0x3FF
+  ext $4, $4, 15, 10              # $4 = (address >> 15) & 0x3FF
 
   sw $1, REG_SAVE($16)            # save offset (delay)
   m_jal load_gamepak_page           # get page in $2
@@ -753,7 +698,7 @@ mips_indirect_branch_dual:
   sw $6, REG_SAVE3($16)           # save a2
 
   save_registers                  # save the registers
-  m_ext $4, $4, 15, 10              # $4 = (address >> 15) & 0x3FF
+  ext $4, $4, 15, 10              # $4 = (address >> 15) & 0x3FF
 
   sw $1, REG_SAVE($16)            # save offset (delay)
   m_jal load_gamepak_page           # get page in $2
@@ -827,7 +772,7 @@ mips_indirect_branch_dual:
 .macro backup_load_core
   save_registers                  # save the registers
 
-  m_ext $4, $4, 0, 16               # address &= 0xFFFF
+  ext $4, $4, 0, 16               # address &= 0xFFFF
   m_jal read_backup                 # get backup value in $2
   nop
 
@@ -844,7 +789,7 @@ mips_indirect_branch_dual:
 
   save_registers                  # save the registers
 
-  m_ext $4, $4, 0, 16               # address &= 0xFFFF
+  ext $4, $4, 0, 16               # address &= 0xFFFF
   m_jal read_backup                 # get backup value in $2
   nop
 
@@ -871,14 +816,14 @@ mips_indirect_branch_dual:
 .macro backup_load_align16 align_bits, alignment, patch_handler
   region_check_align 0xE, \align_bits, \alignment, \patch_handler
   sw $ra, REG_SAVE($16)           # save the return address (delay)
-  m_ins $4, $0, 0, 1                # mask out lower bit
+  ins $4, $0, 0, 1                # mask out lower bit
   backup_load_core
 .endm
 
 .macro backup_load_align32 align_bits, alignment, patch_handler
   region_check_align 0xE, \align_bits, \alignment, \patch_handler
   sw $ra, REG_SAVE($16)           # save the return address (delay)
-  m_ins $4, $0, 0, 2                # mask out lower two bits
+  ins $4, $0, 0, 2                # mask out lower two bits
   backup_load_core
 .endm
 
@@ -959,7 +904,7 @@ mips_indirect_branch_dual:
   m_jal read_memory16               # get instruction at PC
   nop
 
-  m_ins $2, $2, 16, 16              # result = (result << 16) | result (delay)
+  ins $2, $2, 16, 16              # result = (result << 16) | result (delay)
   j 2f
   nop
 
@@ -991,7 +936,7 @@ mips_indirect_branch_dual:
   m_jal read_memory16               # get instruction at PC
   nop
 
-  m_ins $2, $2, 16, 16              # result = (result << 16) | result (delay)
+  ins $2, $2, 16, 16              # result = (result << 16) | result (delay)
   j 2f
   nop
 
@@ -1086,7 +1031,7 @@ mips_indirect_branch_dual:
 
 .macro load_u16_unaligned base
   lhu $2, %lo(\base)($2)          # load base[offset]  
-  m_ror $2, $2, 8                   # rotate value by 8bits
+  ror $2, $2, 8                   # rotate value by 8bits
   jr $ra                          # return
   nop
 .endm
@@ -1104,7 +1049,7 @@ mips_indirect_branch_dual:
 
 .macro load_u32_unaligned base, alignment
   lw $2, %lo(\base)($2)           # load base[offset]
-  m_ror $2, $2, (\alignment * 8)    # rotate value by 8bits
+  ror $2, $2, (\alignment * 8)    # rotate value by 8bits
   jr $ra                          # return
   nop
 .endm
@@ -1129,7 +1074,7 @@ mips_indirect_branch_dual:
 # Store the value double mirrored (u16)
 
 .macro store_u8_double base
-  m_ins $5, $5, 8, 8                # value = (value << 8) | value
+  ins $5, $5, 8, 8                # value = (value << 8) | value
   jr $ra                          # return
   sh $5, %lo(\base)($2)           # store value at base[offset]
 .endm
@@ -1180,7 +1125,7 @@ execute_load_bios_u8:
 
 1:
   lui $2, %hi(bios_read_protect)  # generate upper address
-  m_ins $2, $4, 0, 2                # lower 2 bits address contributes
+  ins $2, $4, 0, 2                # lower 2 bits address contributes
   load_u8 bios_read_protect
 
 execute_load_ewram_u8:
@@ -1279,7 +1224,7 @@ execute_load_bios_s8:
 
 1:
   lui $2, %hi(bios_read_protect)  # generate upper address
-  m_ins $2, $4, 0, 2                # lower 2 bits contribute
+  ins $2, $4, 0, 2                # lower 2 bits contribute
   load_s8 bios_read_protect
 
 execute_load_ewram_s8:
@@ -1331,11 +1276,11 @@ execute_load_eeprom_s8:
   eeprom_load patch_load_s8
 
 execute_load_backup_s8:
-  m_seb $2, $2                      # sign extend result (delay)
+  seb $2, $2                      # sign extend result (delay)
   backup_load patch_load_s8
 
 execute_load_open_s8:
-  m_seb $2, $2                      # sign extend result (delay)
+  seb $2, $2                      # sign extend result (delay)
   open_load8 patch_load_s8
 
 load_s8_ftable:
@@ -1375,7 +1320,7 @@ execute_load_bios_u16:
 
 1:
   lui $2, %hi(bios_read_protect)  # generate upper address
-  m_ins $2, $1, 0, 2                # bit 1 contributes
+  ins $2, $1, 0, 2                # bit 1 contributes
   load_u16 bios_read_protect
 
 execute_load_ewram_u16:
@@ -1449,8 +1394,8 @@ execute_load_bios_u16u:
 
 1:
   lui $2, %hi(bios_read_protect)  # generate upper address
-  m_ext $1, $4, 1, 1
-  m_ins $2, $1, 1, 1                # bit 1 contributes
+  ext $1, $4, 1, 1
+  ins $2, $1, 1, 1                # bit 1 contributes
   load_u16_unaligned bios_read_protect
 
 execute_load_ewram_u16u:
@@ -1502,11 +1447,11 @@ execute_load_eeprom_u16u:
 
 execute_load_backup_u16u:
   backup_load_align16 1, 1, patch_load_u16
-  m_ror $2, $2, 8                   # rotate value by 8bits
+  ror $2, $2, 8                   # rotate value by 8bits
 
 execute_load_open_u16u:
   open_load16_align16 1, 1, patch_load_u16
-  m_ror $2, $2, 8                   # rotate value by 8bits
+  ror $2, $2, 8                   # rotate value by 8bits
 
 load_u16_ftable:
   .long execute_load_bios_u16     # 0x00 BIOS
@@ -1562,7 +1507,7 @@ execute_load_bios_s16:
 
 1:
   lui $2, %hi(bios_read_protect)  # generate upper address
-  m_ins $2, $1, 0, 2                # bit 1 contributes
+  ins $2, $1, 0, 2                # bit 1 contributes
   load_s16 bios_read_protect
 
 execute_load_ewram_s16:
@@ -1636,8 +1581,8 @@ execute_load_bios_s16u:
 
 1:
   lui $2, %hi(bios_read_protect)  # generate upper address
-  m_ext $1, $4, 1, 1
-  m_ins $2, $1, 1, 1                # bit 1 contributes
+  ext $1, $4, 1, 1
+  ins $2, $1, 1, 1                # bit 1 contributes
   load_s16_unaligned bios_read_protect
 
 execute_load_ewram_s16u:
@@ -1689,11 +1634,11 @@ execute_load_eeprom_s16u:
 
 execute_load_backup_s16u:
   backup_load_align 1, 1, patch_load_s16
-   m_seb $2, $2                      # sign extend result from 8bits
+   seb $2, $2                      # sign extend result from 8bits
 
 execute_load_open_s16u:
   open_load16_align 1, 1, patch_load_s16
-   m_seb $2, $2                      # sign extend result from 8bits
+   seb $2, $2                      # sign extend result from 8bits
 
 load_s16_ftable:
   .long execute_load_bios_s16     # 0x00 BIOS
@@ -1873,11 +1818,11 @@ execute_load_eeprom_u32u1:
 
 execute_load_backup_u32u1:
   backup_load_align32 2, 1, patch_load_u32
-  m_ror $2, $2, 8                   # rotate value by 8bits
+  ror $2, $2, 8                   # rotate value by 8bits
 
 execute_load_open_u32u1:
   open_load32_align32 2, 1, patch_load_u32
-  m_ror $2, $2, 8                   # rotate value by 8bits
+  ror $2, $2, 8                   # rotate value by 8bits
 
 
 # Unsigned unaligned (by 2) 32bit load handlers
@@ -1946,11 +1891,11 @@ execute_load_eeprom_u32u2:
 
 execute_load_backup_u32u2:
   backup_load_align32 2, 2, patch_load_u32
-  m_ror $2, $2, 16                   # rotate value by 16bits
+  ror $2, $2, 16                   # rotate value by 16bits
 
 execute_load_open_u32u2:
   open_load32_align32 2, 2, patch_load_u32
-  m_ror $2, $2, 16                   # rotate value by 16bits
+  ror $2, $2, 16                   # rotate value by 16bits
 
 # Unsigned unaligned (by 1) 32bit load handlers
 
@@ -2017,11 +1962,11 @@ execute_load_eeprom_u32u3:
 
 execute_load_backup_u32u3:
   backup_load_align32 2, 3, patch_load_u32
-  m_ror $2, $2, 24                  # rotate value by 24bits
+  ror $2, $2, 24                  # rotate value by 24bits
 
 execute_load_open_u32u3:
   open_load32_align32 2, 3, patch_load_u32
-  m_ror $2, $2, 24                  # rotate value by 24bits
+  ror $2, $2, 24                  # rotate value by 24bits
 
 
 load_u32_ftable:
@@ -2225,7 +2170,7 @@ execute_store_io_u8:
 execute_store_palette_u8:
   region_check 5, patch_store_u8
   lui $2, %hi(palette_ram)        # start loading palette_ram address (delay)
-  m_ins $5, $5, 8, 8                # double value
+  ins $5, $5, 8, 8                # double value
   andi $4, $4, 0x3FE              # align palette address
   addu $2, $2, $4
   sh $5, %lo(palette_ram)($2)     # palette_ram[address] = value
@@ -2242,8 +2187,8 @@ execute_store_palette_u8:
   or   $1,$1,$2 
 
 #  sll $1, $5, 1                   # make green 6bits
-#  m_ins $1, $0, 0, 6                # make bottom bit 0
-#  m_ins $1, $5, 0, 5                # insert red channel into $1
+#  ins $1, $0, 0, 6                # make bottom bit 0
+#  ins $1, $5, 0, 5                # insert red channel into $1
 
   lui $2, %hi(palette_ram_converted)
   addu $2, $2, $4
@@ -2356,8 +2301,8 @@ execute_store_palette_u16:
   or   $1,$1,$2 
   
   # sll $1, $5, 1                   # make green 6bits
-  # m_ins $1, $0, 0, 6                # make bottom bit 0
-  # m_ins $1, $5, 0, 5                # insert red channel into $1
+  # ins $1, $0, 0, 6                # make bottom bit 0
+  # ins $1, $5, 0, 5                # insert red channel into $1
   lui $2, %hi(palette_ram_converted)
   addu $2, $2, $4
   jr $ra                          # return
@@ -2460,8 +2405,8 @@ execute_store_palette_u32:
   sw $5, %lo(palette_ram)($2)     # palette_ram[address] = value
 
 #  sll $1, $5, 1                   # make green 6bits
-#  m_ins $1, $0, 0, 6                # make bottom bit 0
-#  m_ins $1, $5, 0, 5                # insert red channel into $1
+#  ins $1, $0, 0, 6                # make bottom bit 0
+#  ins $1, $5, 0, 5                # insert red channel into $1
 
   # palette convertion R5G6B5 format for SDL(dingux)
 
@@ -2494,8 +2439,8 @@ execute_store_palette_u32:
   lw  $2,-4($sp)
 
 #  sll $1, $5, 1                   # make green 6bits
-#  m_ins $1, $0, 0, 6                # make bottom bit 0
-#  m_ins $1, $5, 0, 5                # insert red channel into $1
+#  ins $1, $0, 0, 6                # make bottom bit 0
+#  ins $1, $5, 0, 5                # insert red channel into $1
 
   jr $ra                          # return
   sh $1, 2($2)
@@ -2613,8 +2558,8 @@ execute_store_palette_u32a:
 
 
 #  sll $1, $5, 1                   # make green 6bits
-#  m_ins $1, $0, 0, 6                # make bottom bit 0
-#  m_ins $1, $5, 0, 5                # insert red channel into $1
+#  ins $1, $0, 0, 6                # make bottom bit 0
+#  ins $1, $5, 0, 5                # insert red channel into $1
 
   lui $2, %hi(palette_ram_converted)
   addu $2, $2, $4
@@ -2635,8 +2580,8 @@ execute_store_palette_u32a:
 
 
 #  sll $1, $5, 1                   # make green 6bits
-#  m_ins $1, $0, 0, 6                # make bottom bit 0
-#  m_ins $1, $5, 0, 5                # insert red channel into $1
+#  ins $1, $0, 0, 6                # make bottom bit 0
+#  ins $1, $5, 0, 5                # insert red channel into $1
 
   jr $ra                          # return
   sh $1, 2($2)
@@ -2742,14 +2687,14 @@ ext_load_s8:
   m_jal read_memory8                # read the value
   nop
   restore_registers
-   m_seb $2, $2                      # sign extend the read value
+   seb $2, $2                      # sign extend the read value
   lw $ra, ($sp)                   # restore return address
   jr $ra                          # return
   addiu $sp, $sp, 4               # fix stack (delay slot)
 
 #execute_load_u16:
   srl $1, $4, 28                  # check if the address is out of range
-  m_ins $1, $4, 4, 1                # or unaligned (bottom bit)
+  ins $1, $4, 4, 1                # or unaligned (bottom bit)
   bne $1, $0, ext_load_u16        # if it is, perform an extended read
   srl $2, $4, 15                  # $1 = page number of address
   sll $2, $2, 2                   # adjust to word index
@@ -2774,7 +2719,7 @@ ext_load_u16:
 
 #execute_load_s16:
   srl $1, $4, 28                  # check if the address is out of range
-  m_ins $1, $4, 4, 1                # or unaligned (bottom bit)
+  ins $1, $4, 4, 1                # or unaligned (bottom bit)
   bne $1, $0, ext_load_s16        # if it is, perform an extended read
   srl $2, $4, 15                  # $1 = page number of address
   sll $2, $2, 2                   # adjust to word index
@@ -2793,14 +2738,14 @@ ext_load_s16:
   m_jal read_memory16_signed        # read the value
   nop
   restore_registers
-   m_seh $2, $2                      # sign extend the return value
+   seh $2, $2                      # sign extend the return value
   lw $ra, ($sp)                   # restore return address
   jr $ra                          # return
   addiu $sp, $sp, 4               # fix stack (delay slot)
 
 #execute_load_u32:
   srl $1, $4, 28                  # check if the address is out of range
-  m_ins $1, $4, 4, 2                # or unaligned (bottom two bits)
+  ins $1, $4, 4, 2                # or unaligned (bottom two bits)
   bne $1, $0, ext_load_u32        # if it is, perform an extended read
   srl $2, $4, 15                  # $1 = page number of address
   sll $2, $2, 2                   # adjust to word index
@@ -2929,9 +2874,9 @@ ext_store_palette8:
   andi $4, $4, 0x3FE              # wrap + align (delay)
 
 ext_store_vram8:
-  m_ins $5, $5, 8, 8                # value = (value << 8) | value
-  m_ext $4, $4, 0, 17               # address = adress & 0x1FFFF
-  m_ins $4, $0, 0, 1                # align out bottom bit
+  ins $5, $5, 8, 8                # value = (value << 8) | value
+  ext $4, $4, 0, 17               # address = adress & 0x1FFFF
+  ins $4, $0, 0, 1                # align out bottom bit
   lui $1, %hi(0x18000)            # $1 = 0x18000
   sltu $1, $4, $1                 # see if address < 0x18000
   bne $1, $0, ext_store_vram8b
@@ -2950,7 +2895,7 @@ ext_store_oam8:
   li $2, 1                        # $2 = 1
   sw $2, ($1)                     # *oam_update = 1
   andi $4, $4, 0x3FE              # wrap around address and align to 16bits
-  m_ins $5, $5, 8, 8                # value = (value << 8) | value
+  ins $5, $5, 8, 8                # value = (value << 8) | value
   lui $1, %hi(oam_ram)            # $1 = (hi)oam_ram
   addu $1, $1, $4                 # $1 = (hi)oam_ram + address
   jr $ra                          # return
@@ -3044,8 +2989,8 @@ ext_store_palette16b:
   addu $2, $2, $4
   sh $5, %lo(palette_ram)($2)     # palette_ram[address] = value
 #  sll $1, $5, 1                   # make green 6bits
-#  m_ins $1, $0, 0, 6                # make bottom bit 0
-#  m_ins $1, $5, 0, 5                # insert red channel into $1
+#  ins $1, $0, 0, 6                # make bottom bit 0
+#  ins $1, $5, 0, 5                # insert red channel into $1
 
   # palette convertion R5G6B5 format for SDL(dingux)
 
@@ -3064,7 +3009,7 @@ ext_store_palette16b:
   sh $1, %lo(palette_ram_converted)($2)
 
 ext_store_vram16:
-  m_ext $4, $4, 0, 17               # address = adress & 0x1FFFF
+  ext $4, $4, 0, 17               # address = adress & 0x1FFFF
   lui $1, %hi(0x18000)            # $1 = 0x18000
   sltu $1, $4, $1                 # see if address < 0x18000
   bne $1, $0, ext_store_vram16b
@@ -3178,7 +3123,7 @@ ext_store_palette32:
   addu $ra, $6, $0                # restore return address (delay)
 
 ext_store_vram32:
-  m_ext $4, $4, 0, 17               # address = adress & 0x1FFFF
+  ext $4, $4, 0, 17               # address = adress & 0x1FFFF
   lui $1, %hi(0x18000)            # $1 = 0x18000
   sltu $1, $4, $1                 # see if address < 0x18000
   bne $1, $0, ext_store_vram32b
@@ -3370,7 +3315,7 @@ execute_swi:
   collapse_flags                  # get cpsr in $2
   lui $5, %hi(SUPERVISOR_SPSR)
   sw $2, %lo(SUPERVISOR_SPSR)($5) # save cpsr in SUPERVISOR_CPSR
-  m_ins $2, $0, 0, 6                # zero out bottom 6 bits of CPSR
+  ins $2, $0, 0, 6                # zero out bottom 6 bits of CPSR
   ori $2, 0x13                    # set mode to supervisor
   sw $2, REG_CPSR($16)            # write back CPSR
   save_registers
@@ -3548,7 +3493,7 @@ execute_ror_flags_reg:
   andi $22, $1, 1                 # c flag = $1 & 1
 
 ror_zero_shift:  
-  m_rorv $4, $4, $5                 # 
+  rorv $4, $4, $5                 # 
   jr $ra                          # return
   nop
 
