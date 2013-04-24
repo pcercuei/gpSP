@@ -1,50 +1,23 @@
-# gpSP makefile
-# Gilead Kutnick - Exophase
-# GP2X port(ion) - Z
 
-# Global definitions
+TARGET := gpsp
 
-CC        = mipsel-linux-gcc
-STRIP     = mipsel-linux-strip
+CC := $(CROSS_COMPILE)gcc
+SDL_CONFIG := sdl-config
 
-OBJS      = main.o cpu.o memory.o video.o input.o sound.o gui.o \
-            cheats.o zip.o cpu_threaded.o mips_stub.o
-BIN       = gpsp.dge 
+OBJS := main.o cpu.o memory.o video.o input.o sound.o gui.o \
+	cheats.o zip.o cpu_threaded.o mips_stub.o
+VPATH := ..
 
-# Platform specific definitions 
+CFLAGS := `$(SDL_CONFIG) --cflags` -Wall -O2 -fomit-frame-pointer -DZAURUS
+ASFLAGS := $(CFLAGS)
+LDFLAGS := `$(SDL_CONFIG) --libs` -lpthread -lz -lm
 
-COMMON_OPT = -g
-COMMON_OPT += -O2 -fno-builtin -fomit-frame-pointer
+.PHONY: all $(TARGET) clean
 
-VPATH      += ..
-CFLAGS     += -DZAURUS
-# NOTE: -funroll-loops will slow down compiling considerably
-CFLAGS     += $(COMMON_OPT)
+all: $(TARGET)
 
-ASFLAGS    += $(COMMON_OPT)
-
-INCLUDES   =
-LIBS       = -lSDL -lpthread -lz -lm
-
-# Compilation:
-
-.SUFFIXES: .c
-
-%.o: %.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
-
-%.o: %.S
-	$(CC) $(ASFLAGS) $(INCLUDES) -c -o $@ $<
-
-all: $(BIN)
-
-$(BIN) : $(OBJS)
-	$(CC) $(COMMON_OPT) $(OBJS) $(LIBS) -o $(BIN)  
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
 
 clean:
-	rm -f *.o *.u *.z $(BIN) 
-
-strip:
-	$(STRIP) $(BIN)
-
-release: $(BIN) strip	
+	rm -f $(TARGET) $(OBJS)
